@@ -1,6 +1,6 @@
 {
   "name": "babylon-eslint",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Custom parser for ESLint",
   "main": "index.js",
   "files": [
