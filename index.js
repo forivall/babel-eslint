@@ -2,9 +2,7 @@ var babylonToEspree = require("./babylon-to-espree");
 var pick            = require("lodash.pickby");
 var Module          = require("module");
 var path            = require("path");
-var parse           = require("babylon").parse;
 var t               = require("babel-types");
-var tt              = require("babylon").tokTypes;
 var traverse        = require("babel-traverse").default;
 var codeFrame       = require("babel-code-frame");
 
@@ -345,6 +343,7 @@ function monkeypatch() {
 
 exports.parse = function (code, options) {
   options = options || {};
+  options.babylon = options.babylon || "babylon";
   eslintOptions.ecmaVersion = options.ecmaVersion = options.ecmaVersion || 6;
   eslintOptions.sourceType = options.sourceType = options.sourceType || "module";
   eslintOptions.allowImportExportEverywhere = options.allowImportExportEverywhere = options.allowImportExportEverywhere || false;
@@ -390,8 +389,9 @@ exports.parseNoPatch = function (code, options) {
   };
 
   var ast;
+  var parser = typeof options.babylon === "string" ? require(options.babylon) : options.babylon;
   try {
-    ast = parse(code, opts);
+    ast = parser.parse(code, opts);
   } catch (err) {
     if (err instanceof SyntaxError) {
       err.lineNumber = err.loc.line;
@@ -413,7 +413,7 @@ exports.parseNoPatch = function (code, options) {
   ast.tokens.pop();
 
   // convert tokens
-  ast.tokens = babylonToEspree.toTokens(ast.tokens, tt, code);
+  ast.tokens = babylonToEspree.toTokens(ast.tokens, parser.tokTypes, code);
 
   // add comments
   babylonToEspree.convertComments(ast.comments);

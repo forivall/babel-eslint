@@ -37,10 +37,10 @@ function lookup(obj, keypath, backwardsDepth) {
   if (!keypath) { return obj; }
 
   return keypath.split(".").slice(0, -1 * backwardsDepth)
-  .reduce(function (base, segment) { return base && base[segment], obj; });
+  .reduce(function (base, segment) { return base && base[segment], obj; }, obj);
 }
 
-function parseAndAssertSame(code) {
+function parseAndAssertSame(code, options) {
   var esAST = espree.parse(code, {
     ecmaFeatures: {
         // enable JSX parsing
@@ -60,26 +60,30 @@ function parseAndAssertSame(code) {
     ecmaVersion: 8,
     sourceType: "module"
   });
-  var babylonAST = babelEslint.parse(code);
+  var babylonAST = babelEslint.parse(code, options);
+  assertASTMatches(esAST, babylonAST);
+  // assert.equal(esAST, babylonAST);
+}
+
+function assertASTMatches(target, source, targetName, sourceName) {
   try {
-    assertImplementsAST(esAST, babylonAST);
+    if (target.tokens) {
+      delete target.tokens;
+    }
+    if (source.tokens) {
+      delete source.tokens;
+    }
+    assertImplementsAST(target, source);
   } catch (err) {
     var traversal = err.message.slice(3, err.message.indexOf(":"));
-    if (esAST.tokens) {
-      delete esAST.tokens;
-    }
-    if (babylonAST.tokens) {
-      delete babylonAST.tokens;
-    }
-    err.message += unpad(`
-      espree:
-      ${util.inspect(lookup(esAST, traversal, 2), {depth: err.depth, colors: true})}
-      babel-eslint:
-      ${util.inspect(lookup(babylonAST, traversal, 2), {depth: err.depth, colors: true})}
-    `);
+    err.message += `
+      ${targetName || "espree"}:
+      ${util.inspect(lookup(target, traversal, 2), {depth: err.depth, colors: true})}
+      ${sourceName || "babel-eslint"}:
+      ${util.inspect(lookup(source, traversal, 2), {depth: err.depth, colors: true})}
+    `;
     throw err;
   }
-  // assert.equal(esAST, babylonAST);
 }
 
 describe("babylon-to-esprima", function () {
@@ -343,6 +347,45 @@ describe("babylon-to-esprima", function () {
           }
         }
       `)
+    );
+  });
+
+  it("iscript preprocessor directive", function () {
+    assertASTMatches(
+      babelEslint.parse(unpad(`
+        // this is a comment
+        #define directive "this is a directive"
+      `), {babylon: "babylon-iscript"}), {
+        type: "Program",
+        start: 60,
+        end: 60,
+        loc: {
+          start: { line: 2, column: 39 },
+          end: { line: 2, column: 39 }
+        },
+        comments: [
+          { type: "Line",
+            value: " this is a comment",
+            start: 0,
+            end: 20,
+            loc: {
+              start: { line: 1, column: 0 },
+              end: { line: 1, column: 20 } },
+            range: [ 0, 20 ] },
+          { type: "Line",
+            value: "define directive \"this is a directive\"",
+            start: 21,
+            end: 60,
+            loc: {
+              start: { line: 2, column: 0 },
+              end: { line: 2, column: 39 }
+            },
+            range: [ 21, 60 ] } ],
+        range: [ 0, 60 ],
+        sourceType: "module",
+        directives: undefined,
+        body: []
+      }
     );
   });
 

@@ -41,6 +41,7 @@
   "homepage": "https://github.com/forivall/babylon-eslint",
   "devDependencies": {
     "babel-eslint": "^7.0.0",
+    "babylon-iscript": "^1.0.0",
     "eslint": "^3.9.1",
     "eslint-config-babel": "^3.0.0",
     "eslint-plugin-babel": "^4.0.0",
